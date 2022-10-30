@@ -1,13 +1,5 @@
 use async_trait::async_trait;
-use lazy_static::lazy_static;
-//use tokio::task;
-
-lazy_static! {
-    static ref POOL: rayon::ThreadPool = rayon::ThreadPoolBuilder::new()
-        .num_threads(8)
-        .build()
-        .unwrap();
-}
+use tokio::task;
 
 type DbError = std::io::Error;
 type DbResult<T> = Result<T, DbError>;
@@ -42,24 +34,10 @@ impl MysqlDb {
 impl Db for MysqlDb {
     async fn begin(&mut self, opt: bool) -> DbResult<()> {
         run_on_blocking_threadpool(move || self.begin_sync(opt)).await
-        /*
-        let mut result = None;
-        POOL.scope(|s| {
-            s.spawn(|_| result = Some(self.begin_sync(opt)))
-        });
-        result.unwrap()
-            */
     }
 
     async fn post(&mut self, params: Params) -> DbResult<PostResult> {
         run_on_blocking_threadpool(move || self.post_sync(params)).await
-        /*
-        let mut result = None;
-        POOL.scope(|s| {
-            s.spawn(|_| result = Some(self.post_sync(params)))
-        });
-        result.unwrap()
-        */
     }
 
     fn info(&mut self) -> Info {
@@ -100,12 +78,7 @@ where
     F: FnOnce() -> Result<T, DbError> + Send + 'static,
     T: Send + 'static,
 {
-    let mut result = None;
-    POOL.scope(|s| {
-        s.spawn(|_| result = Some(f()))
-    });
-    result.unwrap()
-    //task::spawn_blocking(f).await?
+    task::spawn_blocking(f).await?
 }
 
 #[cfg(test)]
