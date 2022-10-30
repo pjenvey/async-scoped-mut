@@ -41,21 +41,11 @@ impl MysqlDb {
 #[async_trait]
 impl Db for MysqlDb {
     async fn begin(&mut self, opt: bool) -> DbResult<()> {
-        //run_on_blocking_threadpool(move || self.begin_sync(opt)).await
-        let mut result = None;
-        POOL.scope(|s| {
-            s.spawn(|_| result = Some(self.begin_sync(opt)))
-        });
-        result.unwrap()
+        run_on_blocking_threadpool(move || self.begin_sync(opt)).await
     }
 
     async fn post(&mut self, params: Params) -> DbResult<PostResult> {
-        //run_on_blocking_threadpool(move || self.post_sync(params)).await
-        let mut result = None;
-        POOL.scope(|s| {
-            s.spawn(|_| result = Some(self.post_sync(params)))
-        });
-        result.unwrap()
+        run_on_blocking_threadpool(move || self.post_sync(params)).await
     }
 
     fn info(&mut self) -> Info {
@@ -93,15 +83,13 @@ impl Db for SpannerDb {
 
 pub async fn run_on_blocking_threadpool<F, T>(f: F) -> Result<T, DbError>
 where
-    F: FnOnce() -> Result<T, DbError> + Send + 'static,
-    T: Send + 'static,
+    F: FnOnce() -> Result<T, DbError> + Send,
+    T: Send,
 {
+    // XXX: not async... (needs a oneshot)
     let mut result = None;
-    POOL.scope(|s| {
-        s.spawn(|_| result = Some(f()))
-    });
+    POOL.scope(|s| s.spawn(|_| result = Some(f())));
     result.unwrap()
-    //task::spawn_blocking(f).await?
 }
 
 #[cfg(test)]
