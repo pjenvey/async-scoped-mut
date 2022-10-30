@@ -1,19 +1,18 @@
-//use async_trait::async_trait;
-use futures::future::LocalBoxFuture;
+use async_trait::async_trait;
 use tokio::task;
 
 type DbError = std::io::Error;
 type DbResult<T> = Result<T, DbError>;
-type DbFuture<'a, T> = LocalBoxFuture<'a, DbResult<T>>;
 
 pub struct Info;
 pub struct Params;
 pub struct PostResult;
 
-pub trait Db<'a>: 'a {
-    fn begin(&self, opt: bool) -> DbFuture<'_, ()>;
+#[async_trait]
+pub trait Db {
+    async fn begin(&self, opt: bool) -> DbResult<()>;
 
-    fn post(&self, params: Params) -> DbFuture<'_, PostResult>;
+    async fn post(&self, params: Params) -> DbResult<PostResult>;
 
     fn info(&self) -> Info;
 }
@@ -31,15 +30,16 @@ impl MysqlDb {
     }
 }
 
-impl<'a> Db<'a> for MysqlDb {
-    fn begin(&self, opt: bool) -> DbFuture<'_, ()> {
+#[async_trait]
+impl Db for MysqlDb {
+    async fn begin(&self, opt: bool) -> DbResult<()> {
         let db = self.clone();
-        Box::pin(run_on_blocking_threadpool(move || db.begin_sync(opt)))
+        run_on_blocking_threadpool(move || db.begin_sync(opt)).await
     }
 
-    fn post(&self, params: Params) -> DbFuture<'_, PostResult> {
+    async fn post(&self, params: Params) -> DbResult<PostResult> {
         let db = self.clone();
-        Box::pin(run_on_blocking_threadpool(move || db.post_sync(params)))
+        run_on_blocking_threadpool(move || db.post_sync(params)).await
     }
 
     fn info(&self) -> Info {
@@ -60,15 +60,14 @@ impl SpannerDb {
     }
 }
 
-impl<'a> Db<'a> for SpannerDb {
-    fn begin(&self, opt: bool) -> DbFuture<'_, ()> {
-        let db = self.clone();
-        Box::pin(async move { db.begin_async(opt).await })
+#[async_trait]
+impl Db for SpannerDb {
+    async fn begin(&self, opt: bool) -> DbResult<()> {
+        self.begin_async(opt).await
     }
 
-    fn post(&self, params: Params) -> DbFuture<'_, PostResult> {
-        let db = self.clone();
-        Box::pin(async move { db.post_async(params).await })
+    async fn post(&self, params: Params) -> DbResult<PostResult> {
+        self.post_async(params).await
     }
 
     fn info(&self) -> Info {
