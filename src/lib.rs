@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use diesel::{MysqlConnection, r2d2::{ConnectionManager, PooledConnection}};
 use lazy_static::lazy_static;
 //use tokio::task;
 
@@ -11,6 +12,7 @@ lazy_static! {
 
 type DbError = std::io::Error;
 type DbResult<T> = Result<T, DbError>;
+type Conn = PooledConnection<ConnectionManager<MysqlConnection>>;
 
 pub struct Info;
 pub struct Params;
@@ -25,8 +27,9 @@ pub trait Db {
     fn info(&mut self) -> Info;
 }
 
-#[derive(Clone)]
-struct MysqlDb;
+struct MysqlDb {
+    pub _conn: Conn,
+}
 
 impl MysqlDb {
     fn begin_sync(&mut self, _opt: bool) -> DbResult<()> {
@@ -53,7 +56,6 @@ impl Db for MysqlDb {
     }
 }
 
-#[derive(Clone)]
 struct SpannerDb;
 
 impl SpannerDb {
