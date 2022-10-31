@@ -62,13 +62,11 @@ impl SpannerDb {
 
 impl<'a> Db<'a> for SpannerDb {
     fn begin(&self, opt: bool) -> DbFuture<'_, ()> {
-        let db = self.clone();
-        Box::pin(async move { db.begin_async(opt).await })
+        Box::pin(async move { self.begin_async(opt).await })
     }
 
     fn post(&self, params: Params) -> DbFuture<'_, PostResult> {
-        let db = self.clone();
-        Box::pin(async move { db.post_async(params).await })
+        Box::pin(async move { self.post_async(params).await })
     }
 
     fn info(&self) -> Info {
