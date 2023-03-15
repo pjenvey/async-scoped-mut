@@ -88,9 +88,16 @@ where
     F: FnOnce() -> Result<T, DbError> + Send,
     T: Send,
 {
-    // XXX: not async... (needs a oneshot)
     let mut result = None;
-    POOL.scope(|s| s.spawn(|_| result = Some(f())));
+    tokio_scoped::scope(|scope| {
+        scope.spawn(async {
+            std::thread::scope(|s| {
+                s.spawn(|| {
+                    result = Some(f());
+                });
+            });
+        });
+    });
     result.unwrap()
 }
 
