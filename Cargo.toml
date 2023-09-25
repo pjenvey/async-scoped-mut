@@ -8,8 +8,9 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.40"
 diesel = { version = "1.4", features = ["mysql", "r2d2"] }
-lazy_static = "1.4.0"
+#lazy_static = "1.4.0"
 futures = { version = "0.3", features = ["compat"] }
-rayon = "1.5.3"
-tokio = { version = "0.2.5", features = ["blocking", "macros", "sync"] }
-tokio-scoped = "0.2.0"
+moro = "0.4.0"
+#rayon = "1.5.3"
+#tokio = { version = "0.2.5", features = ["blocking", "macros", "sync"] }
+#tokio-scoped = "0.2.0"

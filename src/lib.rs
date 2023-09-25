@@ -1,14 +1,8 @@
 use async_trait::async_trait;
-use diesel::{MysqlConnection, r2d2::{ConnectionManager, PooledConnection}};
-use lazy_static::lazy_static;
-//use tokio::task;
-
-lazy_static! {
-    static ref POOL: rayon::ThreadPool = rayon::ThreadPoolBuilder::new()
-        .num_threads(8)
-        .build()
-        .unwrap();
-}
+use diesel::{
+    r2d2::{ConnectionManager, PooledConnection},
+    MysqlConnection,
+};
 
 type DbError = std::io::Error;
 type DbResult<T> = Result<T, DbError>;
@@ -89,15 +83,18 @@ where
     T: Send,
 {
     let mut result = None;
-    tokio_scoped::scope(|scope| {
-        scope.spawn(async {
-            std::thread::scope(|s| {
-                s.spawn(|| {
-                    result = Some(f());
+    moro::async_scope!(|scope| {
+        scope
+            .spawn(async {
+                std::thread::scope(|s| {
+                    s.spawn(|| {
+                        result = Some(f());
+                    });
                 });
-            });
-        });
-    });
+            })
+            .await;
+    })
+    .await;
     result.unwrap()
 }
 
